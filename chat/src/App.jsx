@@ -83,8 +83,10 @@ function App() {
 
   if (!ready) return null;
 
+  const isMobile = window.innerWidth < 700;
+
   // Мобильная версия: если открыт чат — показываем только чат
-  if (window.innerWidth < 700 && roomId) {
+  if (isMobile && roomId) {
     return (
       <Chat
         roomId={roomId}
@@ -104,17 +106,17 @@ function App() {
         <div className="sidebar">
 
           {/* Профиль */}
-          <div style={{ marginBottom: 20 }}>
+          <div className="profile-block">
             {!user ? (
-              <button onClick={() => setShowAuth(true)}>
+              <button className="profile-btn" onClick={() => setShowAuth(true)}>
                 Войти
               </button>
             ) : (
-              <div>
-                <div style={{ marginBottom: 6 }}>
-                  <b>{user.email}</b>
-                </div>
-                <button onClick={handleLogout}>Выйти</button>
+              <div className="profile-info">
+                <div className="profile-email">{user.email}</div>
+                <button className="logout-btn" onClick={handleLogout}>
+                  Выйти
+                </button>
               </div>
             )}
           </div>

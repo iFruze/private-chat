@@ -1,4 +1,5 @@
 /* Layout.css */
+
 .app-container {
   display: flex;
   height: 100vh;
@@ -6,7 +7,7 @@
   background: #f0f2f5;
 }
 
-/* Левая панель фиксированной ширины */
+/* Левая панель */
 .sidebar {
   width: 300px;
   min-width: 300px;
@@ -23,6 +24,41 @@
   font-size: 20px;
 }
 
+/* Профиль */
+.profile-block {
+  margin-bottom: 20px;
+}
+
+.profile-btn {
+  padding: 10px;
+  width: 100%;
+  border-radius: 8px;
+  border: none;
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-email {
+  font-weight: bold;
+}
+
+.logout-btn {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #d9534f;
+  color: white;
+  cursor: pointer;
+}
+
+/* Поля и кнопки */
 .sidebar input {
   padding: 10px;
   border-radius: 8px;
@@ -40,6 +76,7 @@
   margin-bottom: 12px;
 }
 
+/* Список комнат */
 .room-list {
   flex: 1;
   overflow-y: auto;
@@ -58,7 +95,7 @@
   background: #e9e9e9;
 }
 
-/* Чат справа */
+/* Правая панель — чат */
 .chat-wrapper {
   flex: 1;
   display: flex;
