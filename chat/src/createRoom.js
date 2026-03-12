@@ -1,21 +1,33 @@
-import { db } from "./firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { auth } from "./firebase";
+// createRoom.js
+import { db, auth } from "./firebase";
+import {
+  collection,
+  addDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
 
-import { generateRoomCode, hashCode } from "./utils"; // создадим utils позже
+function generateCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 export async function createRoom() {
   const user = auth.currentUser;
-  if (!user) throw new Error("User not logged in");
+  if (!user) throw new Error("Не авторизован");
 
-  const code = generateRoomCode();
-  const codeHash = await hashCode(code);
+  const code = generateCode();
 
-  const docRef = await addDoc(collection(db, "rooms"), {
-    codeHash,
-    allowedUsers: [user.uid],
-    createdAt: serverTimestamp()
+  const roomRef = await addDoc(collection(db, "rooms"), {
+    ownerUid: user.uid,
+    members: [user.uid],
+    code,
+    createdAt: new Date(),
   });
 
-  return { roomId: docRef.id, code };
+  // можно дополнительно привязать комнату к пользователю
+  await updateDoc(doc(db, "users", user.uid), {
+    rooms: (await import("firebase/firestore")).arrayUnion(roomRef.id),
+  });
+
+  return { roomId: roomRef.id, code };
 }

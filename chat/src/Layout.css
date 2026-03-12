@@ -1,5 +1,4 @@
-/* ====== ОСНОВНОЙ LAYOUT ====== */
-
+/* Layout.css */
 .app-container {
   display: flex;
   height: 100vh;
@@ -7,7 +6,7 @@
   background: #f0f2f5;
 }
 
-/* Левая панель (ПК) */
+/* Левая панель фиксированной ширины */
 .sidebar {
   width: 300px;
   min-width: 300px;
@@ -19,6 +18,46 @@
   padding: 16px;
 }
 
+.sidebar h2 {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+}
+
+.sidebar input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 8px;
+}
+
+.sidebar button {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #4a90e2;
+  color: white;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.room-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.room-item {
+  padding: 10px;
+  border-radius: 8px;
+  background: #f7f7f7;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.room-item:hover {
+  background: #e9e9e9;
+}
+
 /* Чат справа */
 .chat-wrapper {
   flex: 1;
@@ -28,14 +67,12 @@
   height: 100vh;
 }
 
-/* ====== МОБИЛЬНАЯ ВЕРСИЯ ====== */
-
+/* Мобильная версия */
 @media (max-width: 700px) {
   .app-container {
     flex-direction: column;
   }
 
-  /* Sidebar становится полноэкранным списком чатов */
   .sidebar {
     width: 100%;
     min-width: 100%;
@@ -51,22 +88,12 @@
     margin-bottom: 10px;
   }
 
-  .sidebar input {
-    padding: 12px;
-    font-size: 16px;
-  }
-
-  .sidebar button {
-    padding: 12px;
-    font-size: 16px;
-  }
-
+  .sidebar input,
+  .sidebar button,
   .room-item {
-    padding: 14px;
     font-size: 16px;
   }
 
-  /* Чат занимает весь экран */
   .chat-wrapper {
     width: 100%;
     height: calc(100vh - 60px);

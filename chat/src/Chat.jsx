@@ -1,12 +1,15 @@
+// Chat.jsx
 import { useState, useRef, useEffect } from "react";
 import { sendMessage } from "./sendMessage";
 import { useMessages } from "./useMessages";
+import { useUsers } from "./useUsers";
 import { auth } from "./firebase";
 import "./Chat.css";
 
-function Chat({ roomId, onBack }) {
+function Chat({ roomId, onBack, onExit }) {
   const [text, setText] = useState("");
   const messages = useMessages(roomId);
+  const users = useUsers(roomId);
   const myId = auth.currentUser.uid;
   const bottomRef = useRef(null);
 
@@ -15,45 +18,51 @@ function Chat({ roomId, onBack }) {
     setText("");
   }
 
-  // Авто‑скролл вниз
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
     <div className="chat-container">
-      {/* Кнопка назад для телефона */}
-      {onBack && (
-        <button
-          style={{
-            padding: 10,
-            background: "#4a90e2",
-            color: "white",
-            border: "none",
-            width: "100%",
-          }}
-          onClick={onBack}
-        >
-          ← Назад к списку чатов
-        </button>
-      )}
+      <div className="chat-header">
+        {onBack && (
+          <button className="back-btn" onClick={onBack}>
+            ←
+          </button>
+        )}
+        <div className="chat-title">Комната</div>
+        {onExit && (
+          <button className="exit-btn" onClick={onExit}>
+            Выйти
+          </button>
+        )}
+      </div>
 
       <div className="messages">
-        {messages.map(m => (
-          <div
-            key={m.id}
-            className={`message ${m.authorId === myId ? "me" : "other"}`}
-          >
-            {m.text}
-          </div>
-        ))}
-        <div ref={bottomRef}></div>
+        {messages.map((m) => {
+          const isMe = m.authorId === myId;
+          const user = users[m.authorId];
+          return (
+            <div
+              key={m.id}
+              className={`message ${isMe ? "me" : "other"}`}
+            >
+              {!isMe && (
+                <div className="author-name">
+                  {user?.name || "Пользователь"}
+                </div>
+              )}
+              {m.text}
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
       </div>
 
       <div className="input-area">
         <input
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           placeholder="Введите сообщение"
         />
         <button onClick={handleSend}>Отправить</button>

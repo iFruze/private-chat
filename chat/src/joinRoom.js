@@ -1,36 +1,42 @@
+// joinRoom.js
 import { db, auth } from "./firebase";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
-import { hashCode } from "./utils";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import { arrayUnion } from "firebase/firestore";
 
 export async function joinRoom(code) {
   const user = auth.currentUser;
-  if (!user) throw new Error("User not logged in");
+  if (!user) throw new Error("Не авторизован");
 
-  const codeHash = await hashCode(code);
+  const q = query(
+    collection(db, "rooms"),
+    where("code", "==", code.toUpperCase())
+  );
 
-  // Ищем комнату по хэшу
-  const q = query(collection(db, "rooms"), where("codeHash", "==", codeHash));
-  const snapshot = await getDocs(q);
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error("Комната не найдена");
 
-  if (snapshot.empty) {
-    throw new Error("Комната не найдена");
-  }
-
-  const roomDoc = snapshot.docs[0];
+  const roomDoc = snap.docs[0];
   const roomId = roomDoc.id;
-  const roomData = roomDoc.data();
+  const data = roomDoc.data();
 
-  // Проверяем, есть ли уже этот пользователь
-  if (!roomData.allowedUsers.includes(user.uid)) {
-    if (roomData.allowedUsers.length >= 2) {
-      throw new Error("Комната уже заполнена");
-    }
-
-    // Добавляем пользователя
+  // добавляем пользователя в members, если его там нет
+  if (!data.members?.includes(user.uid)) {
     await updateDoc(doc(db, "rooms", roomId), {
-      allowedUsers: [...roomData.allowedUsers, user.uid]
+      members: arrayUnion(user.uid),
     });
   }
+
+  // добавляем комнату в список пользователя
+  await updateDoc(doc(db, "users", user.uid), {
+    rooms: arrayUnion(roomId),
+  });
 
   return { roomId };
 }
