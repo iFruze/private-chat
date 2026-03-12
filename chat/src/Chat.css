@@ -59,17 +59,27 @@
   cursor: pointer;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
+  .chat-container {
+    height: 100vh;
+  }
+
+  .messages {
+    padding: 12px;
+    gap: 10px;
+  }
+
   .message {
+    font-size: 15px;
     max-width: 85%;
-    font-size: 14px;
   }
 
   .input-area input {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .input-area button {
-    font-size: 14px;
+    font-size: 16px;
   }
 }
+
