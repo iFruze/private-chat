@@ -1,27 +1,26 @@
-import { useEffect, useState } from "react";
-import { login } from "./auth";
+import { useState } from "react";
+import { sendMessage } from "./sendMessage";
+import { useMessages } from "./useMessages";
 import { createRoom } from "./createRoom";
 import { joinRoom } from "./joinRoom";
 
 function App() {
+  const [roomId, setRoomId] = useState(null);
   const [code, setCode] = useState("");
-
-  useEffect(() => {
-    login();
-  }, []);
 
   async function handleCreate() {
     const room = await createRoom();
-    alert("Комната создана! Код: " + room.code);
+    setRoomId(room.roomId);
+    alert("Код комнаты: " + room.code);
   }
 
   async function handleJoin() {
-    try {
-      const room = await joinRoom(code);
-      alert("Вы вошли в комнату: " + room.roomId);
-    } catch (e) {
-      alert(e.message);
-    }
+    const room = await joinRoom(code);
+    setRoomId(room.roomId);
+  }
+
+  if (roomId) {
+    return <Chat roomId={roomId} />;
   }
 
   return (
@@ -35,6 +34,37 @@ function App() {
           onChange={e => setCode(e.target.value)}
         />
         <button onClick={handleJoin}>Войти</button>
+      </div>
+    </div>
+  );
+}
+
+function Chat({ roomId }) {
+  const [text, setText] = useState("");
+  const messages = useMessages(roomId);
+
+  async function handleSend() {
+    await sendMessage(roomId, text);
+    setText("");
+  }
+
+  return (
+    <div style={{ padding: 20 }}>
+      <div style={{ height: 300, overflowY: "auto", border: "1px solid #ccc", padding: 10 }}>
+        {messages.map(m => (
+          <div key={m.id} style={{ marginBottom: 10 }}>
+            <b>{m.authorId.slice(0, 5)}:</b> {m.text}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Введите сообщение"
+        />
+        <button onClick={handleSend}>Отправить</button>
       </div>
     </div>
   );
