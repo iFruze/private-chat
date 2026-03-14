@@ -2,6 +2,32 @@ import { useState } from "react";
 import { login, register } from "./auth";
 import "./AuthModal.css";
 
+function translateError(code) {
+  switch (code) {
+    case "auth/invalid-email":
+      return "Некорректный email";
+
+    case "auth/missing-password":
+      return "Введите пароль";
+
+    case "auth/weak-password":
+      return "Пароль должен содержать минимум 6 символов";
+
+    case "auth/email-already-in-use":
+      return "Этот email уже зарегистрирован";
+
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "Неверный email или пароль";
+
+    case "auth/missing-email":
+      return "Введите email";
+
+    default:
+      return "Произошла ошибка. Попробуйте ещё раз";
+  }
+}
+
 export default function AuthModal({ onClose }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -17,11 +43,16 @@ export default function AuthModal({ onClose }) {
       if (mode === "login") {
         await login(email, password);
       } else {
+        if (!name.trim()) {
+          setError("Введите имя");
+          return;
+        }
         await register(email, password, name);
       }
       onClose();
     } catch (err) {
-      setError(err.message);
+      const code = err.code || "";
+      setError(translateError(code));
     }
   }
 
