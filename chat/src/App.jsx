@@ -11,6 +11,7 @@ import { leaveRoom } from "./leaveRoom";
 
 function App() {
   const [user, setUser] = useState(null);
+  const isAuth = !!user;
   const [ready, setReady] = useState(false);
 
   const [roomId, setRoomId] = useState(null);
@@ -135,17 +136,26 @@ function App() {
             placeholder="Введите код комнаты"
             value={code}
             onChange={(e) => setCode(e.target.value)}
+            disabled={!isAuth}
           />
-          <button onClick={handleJoin}>Войти</button>
 
-          <button onClick={handleCreate}>Создать комнату</button>
+          <button onClick={handleJoin} disabled={!isAuth}>
+            Войти
+          </button>
+
+          <button onClick={handleCreate} disabled={!isAuth}>
+            Создать комнату
+          </button>
 
           <div className="room-list">
             {rooms.map((id) => (
               <div
                 key={id}
-                className="room-item"
-                onClick={() => setRoomId(id)}
+                className={`room-item ${!isAuth ? "disabled" : ""}`}
+                onClick={() => {
+                  if (!isAuth) return;
+                  setRoomId(id);
+                }}
               >
                 Комната: {id.slice(0, 6)}...
               </div>
