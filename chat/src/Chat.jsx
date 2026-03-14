@@ -10,7 +10,8 @@ function Chat({ roomId, onBack, onExit }) {
   const [text, setText] = useState("");
   const messages = useMessages(roomId);
   const users = useUsers(roomId);
-  const myId = auth.currentUser.uid;
+  const isAuth = !!auth.currentUser;
+  const myId = auth.currentUser?.uid;
   const bottomRef = useRef(null);
 
   async function handleSend() {
@@ -65,8 +66,11 @@ function Chat({ roomId, onBack, onExit }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Введите сообщение"
+          disabled={!isAuth}
         />
-        <button onClick={handleSend}>Отправить</button>
+        <button onClick={handleSend} disabled={!isAuth}>
+          Отправить
+        </button>
       </div>
     </div>
   );
