@@ -7,6 +7,7 @@ import { createRoom } from "./createRoom";
 import { joinRoom } from "./joinRoom";
 import Chat from "./Chat";
 import "./Layout.css";
+import { leaveRoom } from "./leaveRoom";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -71,7 +72,14 @@ function App() {
   }
 
   // Выход из комнаты
-  function handleExit() {
+  async function handleExit() {
+    if (roomId) {
+      await leaveRoom(roomId);
+
+      // 🔥 Удаляем комнату из локального списка
+      setRooms(prev => prev.filter(id => id !== roomId));
+    }
+
     setRoomId(null);
   }
 
