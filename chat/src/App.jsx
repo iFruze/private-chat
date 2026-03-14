@@ -117,13 +117,13 @@ function App() {
           <div className="profile-block">
             {!user ? (
               <button className="profile-btn" onClick={() => setShowAuth(true)}>
-                Войти
+                Войти в аккаунт
               </button>
             ) : (
               <div className="profile-info">
                 <div className="profile-email">{user.email}</div>
                 <button className="logout-btn" onClick={handleLogout}>
-                  Выйти
+                  Выйти из аккаунта
                 </button>
               </div>
             )}
