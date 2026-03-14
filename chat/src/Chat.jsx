@@ -4,6 +4,11 @@ import { sendMessage } from "./sendMessage";
 import { useMessages } from "./useMessages";
 import { useUsers } from "./useUsers";
 import { auth } from "./firebase";
+import {
+  startCall,
+  answerCall,
+  watchIncomingCalls,
+} from "./callService";
 import "./Chat.css";
 
 function Chat({ roomId, onBack, onExit }) {
@@ -14,7 +19,17 @@ function Chat({ roomId, onBack, onExit }) {
   const myId = auth.currentUser?.uid;
   const bottomRef = useRef(null);
 
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [inCall, setInCall] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [callController, setCallController] = useState(null);
+
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+
   async function handleSend() {
+    if (!isAuth) return;
     await sendMessage(roomId, text);
     setText("");
   }
@@ -22,6 +37,73 @@ function Chat({ roomId, onBack, onExit }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Подписка на входящие звонки
+  useEffect(() => {
+    const unsub = watchIncomingCalls(roomId, ({ callId }) => {
+      setIncomingCall({ callId });
+    });
+    return () => unsub();
+  }, [roomId]);
+
+  // Привязка стримов к video
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
+
+  async function getMedia(audioOnly = false) {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: !audioOnly,
+    });
+    setLocalStream(stream);
+    return stream;
+  }
+
+  async function handleStartCall(audioOnly = false) {
+    if (!isAuth || inCall) return;
+    const stream = await getMedia(audioOnly);
+    const ctrl = await startCall(roomId, stream, {
+      onRemoteStream: (s) => setRemoteStream(s),
+      onEnd: handleEndCall,
+    });
+    setCallController(ctrl);
+    setInCall(true);
+  }
+
+  async function handleAnswerCall(audioOnly = false) {
+    if (!incomingCall || inCall) return;
+    const stream = await getMedia(audioOnly);
+    const ctrl = await answerCall(roomId, incomingCall.callId, stream, {
+      onRemoteStream: (s) => setRemoteStream(s),
+      onEnd: handleEndCall,
+    });
+    setCallController(ctrl);
+    setInCall(true);
+    setIncomingCall(null);
+  }
+
+  async function handleEndCall() {
+    if (callController) {
+      await callController.stop();
+    }
+    setInCall(false);
+    setIncomingCall(null);
+    if (localStream) {
+      localStream.getTracks().forEach((t) => t.stop());
+    }
+    setLocalStream(null);
+    setRemoteStream(null);
+    setCallController(null);
+  }
 
   return (
     <div className="chat-container">
@@ -32,12 +114,49 @@ function Chat({ roomId, onBack, onExit }) {
           </button>
         )}
         <div className="chat-title">Комната</div>
-        {onExit && (
-          <button className="exit-btn" onClick={onExit}>
-            Выйти
+        <div className="chat-actions">
+          <button
+            className="call-btn"
+            disabled={!isAuth || inCall}
+            onClick={() => handleStartCall(true)}
+          >
+            🔊
           </button>
-        )}
+          <button
+            className="call-btn"
+            disabled={!isAuth || inCall}
+            onClick={() => handleStartCall(false)}
+          >
+            🎥
+          </button>
+          {onExit && (
+            <button className="exit-btn" onClick={onExit}>
+              Выйти
+            </button>
+          )}
+        </div>
       </div>
+
+      {incomingCall && !inCall && (
+        <div className="incoming-call">
+          Входящий звонок
+          <button onClick={() => handleAnswerCall(true)}>Принять (аудио)</button>
+          <button onClick={() => handleAnswerCall(false)}>Принять (видео)</button>
+          <button onClick={handleEndCall}>Отклонить</button>
+        </div>
+      )}
+
+      {inCall && (
+        <div className="call-panel">
+          <div className="videos">
+            <video ref={localVideoRef} autoPlay muted className="video local" />
+            <video ref={remoteVideoRef} autoPlay className="video remote" />
+          </div>
+          <button className="hangup-btn" onClick={handleEndCall}>
+            Завершить звонок
+          </button>
+        </div>
+      )}
 
       <div className="messages">
         {messages.map((m) => {
