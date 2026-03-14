@@ -140,7 +140,7 @@ function App() {
           />
 
           <button onClick={handleJoin} disabled={!isAuth}>
-            Войти
+            Войти в комнату
           </button>
 
           <button onClick={handleCreate} disabled={!isAuth}>
