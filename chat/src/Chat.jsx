@@ -42,6 +42,7 @@ function Chat({ roomId, onBack, onExit }) {
         {messages.map((m) => {
           const isMe = m.authorId === myId;
           const user = users[m.authorId];
+
           return (
             <div
               key={m.id}
@@ -49,7 +50,7 @@ function Chat({ roomId, onBack, onExit }) {
             >
               {!isMe && (
                 <div className="author-name">
-                  {user?.name || "Пользователь"}
+                  {user?.name || user?.email?.split("@")[0] || "Без имени"}
                 </div>
               )}
               {m.text}
