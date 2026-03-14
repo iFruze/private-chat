@@ -53,10 +53,35 @@ function Chat({ roomId, onBack, onExit }) {
     }
   }, [localStream]);
 
+  // useEffect(() => {
+  //   if (remoteVideoRef.current && remoteStream) {
+  //     remoteVideoRef.current.srcObject = remoteStream;
+  //   }
+  // }, [remoteStream]);
+
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
+    if (!remoteStream) return;
+
+    console.log("[UI] attaching remoteStream to audio");
+    const audio = new Audio();
+    audio.srcObject = remoteStream;
+    audio.autoplay = true;
+
+    const play = async () => {
+      try {
+        await audio.play();
+        console.log("[UI] remote audio playing");
+      } catch (e) {
+        console.warn("[UI] audio play error", e);
+      }
+    };
+
+    play();
+
+    return () => {
+      audio.pause();
+      audio.srcObject = null;
+    };
   }, [remoteStream]);
 
   async function getMedia(audioOnly = false) {
@@ -72,7 +97,11 @@ function Chat({ roomId, onBack, onExit }) {
     if (!isAuth || inCall) return;
     const stream = await getMedia(audioOnly);
     const ctrl = await startCall(roomId, stream, {
-      onRemoteStream: (s) => setRemoteStream(s),
+      onRemoteStream: (s) => {
+        console.log("[UI] onRemoteStream", s);
+        console.log("[UI] remote audio tracks:", s.getAudioTracks());
+        setRemoteStream(s)
+      },
       onEnd: handleEndCall,
     });
     setCallController(ctrl);
