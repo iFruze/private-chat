@@ -75,7 +75,11 @@ function App() {
   async function handleExit() {
     if (roomId) {
       await leaveRoom(roomId);
+
+      // 🔥 Удаляем комнату из локального списка
+      setRooms(prev => prev.filter(id => id !== roomId));
     }
+
     setRoomId(null);
   }
 
