@@ -48,23 +48,19 @@ function Chat({ roomId, onBack, onExit }) {
 
   // Привязка стримов к video
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream]);
+    if (!localVideoRef.current) return;
+    if (!localStream) return;
+
+    localVideoRef.current.srcObject = localStream;
+  }, [localStream, inCall]);
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      console.log("[UI] attaching remote stream to VIDEO", remoteStream);
-      remoteVideoRef.current.srcObject = remoteStream;
-    } else {
-      console.log("[UI] remote video not attached", {
-        hasRef: !!remoteVideoRef.current,
-        hasStream: !!remoteStream
-      });
-    }
-  }, [remoteStream]);
+    if (!remoteVideoRef.current) return;
+    if (!remoteStream) return;
 
+    console.log("[UI] attaching remote stream to VIDEO", remoteStream);
+    remoteVideoRef.current.srcObject = remoteStream;
+  }, [remoteStream, inCall]);
 
   useEffect(() => {
     if (!remoteStream) return;

@@ -76,8 +76,6 @@ function App() {
   async function handleExit() {
     if (roomId) {
       await leaveRoom(roomId);
-
-      // 🔥 Удаляем комнату из локального списка
       setRooms(prev => prev.filter(id => id !== roomId));
     }
 
@@ -94,27 +92,14 @@ function App() {
 
   const isMobile = window.innerWidth < 700;
 
-  // Мобильная версия: если открыт чат — показываем только чат
-  if (isMobile && roomId) {
-    return (
-      <Chat
-        roomId={roomId}
-        onBack={() => setRoomId(null)}
-        onExit={handleExit}
-      />
-    );
-  }
-
   return (
     <>
-      {/* Модальное окно авторизации */}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
 
-      <div className="app-container">
+      <div className={`app-container ${isMobile && roomId ? "mobile-chat" : ""}`}>
+        
         {/* Левая панель */}
         <div className="sidebar">
-
-          {/* Профиль */}
           <div className="profile-block">
             {!user ? (
               <button className="profile-btn" onClick={() => setShowAuth(true)}>
@@ -168,6 +153,7 @@ function App() {
           {roomId && (
             <Chat
               roomId={roomId}
+              onBack={() => setRoomId(null)}
               onExit={handleExit}
             />
           )}

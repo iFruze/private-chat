@@ -162,3 +162,12 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* Когда открыт чат на мобильном — скрываем левую панель */
+.mobile-chat .sidebar {
+  display: none;
+}
+
+.mobile-chat .chat-wrapper {
+  width: 100%;
+  height: 100vh;
+}
