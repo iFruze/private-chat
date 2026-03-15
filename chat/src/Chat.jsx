@@ -198,6 +198,10 @@ function Chat({ roomId, onBack, onExit }) {
         {messages.map((m) => {
           const isMe = m.authorId === myId;
           const user = users[m.authorId];
+          const time = m.createdAt?.toDate().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          });
 
           return (
             <div
@@ -209,8 +213,12 @@ function Chat({ roomId, onBack, onExit }) {
                   {user?.name || user?.email?.split("@")[0] || "Без имени"}
                 </div>
               )}
-              {m.text}
+
+              <div className="message-text">{m.text}</div>
+
+              <div className="message-time">{time}</div>
             </div>
+
           );
         })}
         <div ref={bottomRef} />
