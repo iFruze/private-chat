@@ -141,6 +141,24 @@ function Chat({ roomId, onBack, onExit }) {
     setCallController(null);
   }
 
+  function formatDate(date) {
+    const d = date.toDate();
+    const today = new Date();
+
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+
+    if (isToday) return "Сегодня";
+
+    return d.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+
   return (
     <div className="chat-container">
       <div className="chat-header">
@@ -195,32 +213,45 @@ function Chat({ roomId, onBack, onExit }) {
       )}
 
       <div className="messages">
-        {messages.map((m) => {
+        {messages.map((m, index) => {
           const isMe = m.authorId === myId;
           const user = users[m.authorId];
+
           const time = m.createdAt?.toDate().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit"
           });
 
+          // === ГРУППИРОВКА ПО ДАТАМ ===
+          const currentDate = m.createdAt;
+          const prevDate = index > 0 ? messages[index - 1].createdAt : null;
+
+          const showDate =
+            !prevDate ||
+            currentDate.toDate().toDateString() !== prevDate.toDate().toDateString();
+
           return (
-            <div
-              key={m.id}
-              className={`message ${isMe ? "me" : "other"}`}
-            >
-              {!isMe && (
-                <div className="author-name">
-                  {user?.name || user?.email?.split("@")[0] || "Без имени"}
+            <>
+              {showDate && (
+                <div key={`date-${m.id}`} className="date-separator">
+                  {formatDate(currentDate)}
                 </div>
               )}
 
-              <div className="message-text">{m.text}</div>
+              <div key={m.id} className={`message ${isMe ? "me" : "other"}`}>
+                {!isMe && (
+                  <div className="author-name">
+                    {user?.name || user?.email?.split("@")[0] || "Без имени"}
+                  </div>
+                )}
 
-              <div className="message-time">{time}</div>
-            </div>
-
+                <div className="message-text">{m.text}</div>
+                <div className="message-time">{time}</div>
+              </div>
+            </>
           );
         })}
+
         <div ref={bottomRef} />
       </div>
 
