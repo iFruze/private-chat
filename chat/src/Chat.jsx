@@ -55,8 +55,40 @@ function Chat({ roomId, onBack, onExit }) {
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
+      console.log("[UI] attaching remote stream to VIDEO", remoteStream);
       remoteVideoRef.current.srcObject = remoteStream;
+    } else {
+      console.log("[UI] remote video not attached", {
+        hasRef: !!remoteVideoRef.current,
+        hasStream: !!remoteStream
+      });
     }
+  }, [remoteStream]);
+
+
+  useEffect(() => {
+    if (!remoteStream) return;
+
+    console.log("[UI] attaching remoteStream to audio");
+    const audio = new Audio();
+    audio.srcObject = remoteStream;
+    audio.autoplay = true;
+
+    const play = async () => {
+      try {
+        await audio.play();
+        console.log("[UI] remote audio playing");
+      } catch (e) {
+        console.warn("[UI] audio play error", e);
+      }
+    };
+
+    play();
+
+    return () => {
+      audio.pause();
+      audio.srcObject = null;
+    };
   }, [remoteStream]);
 
   async function getMedia(audioOnly = false) {
@@ -72,7 +104,11 @@ function Chat({ roomId, onBack, onExit }) {
     if (!isAuth || inCall) return;
     const stream = await getMedia(audioOnly);
     const ctrl = await startCall(roomId, stream, {
-      onRemoteStream: (s) => setRemoteStream(s),
+      onRemoteStream: (s) => {
+        console.log("[UI] onRemoteStream", s);
+        console.log("[UI] remote audio tracks:", s.getAudioTracks());
+        setRemoteStream(s)
+      },
       onEnd: handleEndCall,
     });
     setCallController(ctrl);
@@ -103,6 +139,24 @@ function Chat({ roomId, onBack, onExit }) {
     setLocalStream(null);
     setRemoteStream(null);
     setCallController(null);
+  }
+
+  function formatDate(date) {
+    const d = date.toDate();
+    const today = new Date();
+
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+
+    if (isToday) return "Сегодня";
+
+    return d.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
   }
 
   return (
@@ -159,24 +213,45 @@ function Chat({ roomId, onBack, onExit }) {
       )}
 
       <div className="messages">
-        {messages.map((m) => {
+        {messages.map((m, index) => {
           const isMe = m.authorId === myId;
           const user = users[m.authorId];
 
+          const time = m.createdAt?.toDate().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+
+          // === ГРУППИРОВКА ПО ДАТАМ ===
+          const currentDate = m.createdAt;
+          const prevDate = index > 0 ? messages[index - 1].createdAt : null;
+
+          const showDate =
+            !prevDate ||
+            currentDate.toDate().toDateString() !== prevDate.toDate().toDateString();
+
           return (
-            <div
-              key={m.id}
-              className={`message ${isMe ? "me" : "other"}`}
-            >
-              {!isMe && (
-                <div className="author-name">
-                  {user?.name || user?.email?.split("@")[0] || "Без имени"}
+            <>
+              {showDate && (
+                <div key={`date-${m.id}`} className="date-separator">
+                  {formatDate(currentDate)}
                 </div>
               )}
-              {m.text}
-            </div>
+
+              <div key={m.id} className={`message ${isMe ? "me" : "other"}`}>
+                {!isMe && (
+                  <div className="author-name">
+                    {user?.name || user?.email?.split("@")[0] || "Без имени"}
+                  </div>
+                )}
+
+                <div className="message-text">{m.text}</div>
+                <div className="message-time">{time}</div>
+              </div>
+            </>
           );
         })}
+
         <div ref={bottomRef} />
       </div>
 
