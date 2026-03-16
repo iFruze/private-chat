@@ -4,6 +4,7 @@ import { sendMessage } from "./sendMessage";
 import { useMessages } from "./useMessages";
 import { useUsers } from "./useUsers";
 import { auth } from "./firebase";
+import { Fragment } from "react";
 import {
   startCall,
   answerCall,
@@ -213,28 +214,37 @@ function Chat({ roomId, onBack, onExit }) {
           const isMe = m.authorId === myId;
           const user = users[m.authorId];
 
-          const time = m.createdAt?.toDate().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit"
-          });
+          const time = m.createdAt
+            ? m.createdAt.toDate().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            : "";
 
           // === ГРУППИРОВКА ПО ДАТАМ ===
-          const currentDate = m.createdAt;
-          const prevDate = index > 0 ? messages[index - 1].createdAt : null;
+          const currentDate = m.createdAt ?? null;
+          const prevDate = index > 0 ? messages[index - 1].createdAt ?? null : null;
+
+          const currentDateString = currentDate
+            ? currentDate.toDate().toDateString()
+            : null;
+
+          const prevDateString = prevDate
+            ? prevDate.toDate().toDateString()
+            : null;
 
           const showDate =
-            !prevDate ||
-            currentDate.toDate().toDateString() !== prevDate.toDate().toDateString();
+            currentDateString && (!prevDateString || currentDateString !== prevDateString);
 
           return (
-            <>
+            <Fragment key={m.id}>
               {showDate && (
-                <div key={`date-${m.id}`} className="date-separator">
+                <div className="date-separator">
                   {formatDate(currentDate)}
                 </div>
               )}
 
-              <div key={m.id} className={`message ${isMe ? "me" : "other"}`}>
+              <div className={`message ${isMe ? "me" : "other"}`}>
                 {!isMe && (
                   <div className="author-name">
                     {user?.name || user?.email?.split("@")[0] || "Без имени"}
@@ -244,7 +254,7 @@ function Chat({ roomId, onBack, onExit }) {
                 <div className="message-text">{m.text}</div>
                 <div className="message-time">{time}</div>
               </div>
-            </>
+            </Fragment>
           );
         })}
 
