@@ -8,6 +8,7 @@ import { Fragment } from "react";
 import {
   startCall,
   answerCall,
+  rejectCall,
   watchIncomingCalls,
 } from "./callService";
 import "./Chat.css";
@@ -24,10 +25,14 @@ function Chat({ roomId, onBack, onExit }) {
   const [inCall, setInCall] = useState(false);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
-  const [callController, setCallController] = useState(null);
+  const callControllerRef = useRef(null);
+  const [callAudioOnly, setCallAudioOnly] = useState(false);
+  const [mediaError, setMediaError] = useState(null);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const endingCallRef = useRef(false);
 
   async function handleSend() {
     if (!isAuth) return;
@@ -39,94 +44,121 @@ function Chat({ roomId, onBack, onExit }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Подписка на входящие звонки
   useEffect(() => {
-    const unsub = watchIncomingCalls(roomId, ({ callId }) => {
-      setIncomingCall({ callId });
+    const unsub = watchIncomingCalls(roomId, (event) => {
+      if (event.type === "incoming" && !inCall) {
+        setIncomingCall({
+          callId: event.callId,
+          audioOnly: event.audioOnly,
+        });
+      } else if (event.type === "cleared") {
+        setIncomingCall((prev) =>
+          prev?.callId === event.callId ? null : prev
+        );
+      }
     });
     return () => unsub();
-  }, [roomId]);
+  }, [roomId, inCall]);
 
-  // Привязка стримов к video
   useEffect(() => {
-    if (!localVideoRef.current) return;
-    if (!localStream) return;
-
+    if (!localVideoRef.current || !localStream) return;
     localVideoRef.current.srcObject = localStream;
   }, [localStream, inCall]);
 
   useEffect(() => {
-    if (!remoteVideoRef.current) return;
     if (!remoteStream) return;
 
-    console.log("[UI] attaching remote stream to VIDEO", remoteStream);
-    remoteVideoRef.current.srcObject = remoteStream;
-  }, [remoteStream, inCall]);
+    if (callAudioOnly && remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch((e) => {
+        console.warn("[UI] remote audio play error", e);
+      });
+      return;
+    }
 
-  useEffect(() => {
-    if (!remoteStream) return;
-
-    console.log("[UI] attaching remoteStream to audio");
-    const audio = new Audio();
-    audio.srcObject = remoteStream;
-    audio.autoplay = true;
-
-    const play = async () => {
-      try {
-        await audio.play();
-        console.log("[UI] remote audio playing");
-      } catch (e) {
-        console.warn("[UI] audio play error", e);
-      }
-    };
-
-    play();
-
-    return () => {
-      audio.pause();
-      audio.srcObject = null;
-    };
-  }, [remoteStream]);
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, inCall, callAudioOnly]);
 
   async function getMedia(audioOnly = false) {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: !audioOnly,
-    });
-    setLocalStream(stream);
-    return stream;
+    setMediaError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: !audioOnly,
+      });
+      setLocalStream(stream);
+      return stream;
+    } catch (e) {
+      console.error("[UI] getUserMedia error", e);
+      const message =
+        e.name === "NotAllowedError"
+          ? "Нет доступа к камере или микрофону. Разрешите доступ в настройках браузера."
+          : "Не удалось получить доступ к камере или микрофону.";
+      setMediaError(message);
+      throw e;
+    }
   }
 
   async function handleStartCall(audioOnly = false) {
     if (!isAuth || inCall) return;
-    const stream = await getMedia(audioOnly);
-    const ctrl = await startCall(roomId, stream, {
-      onRemoteStream: (s) => {
-        console.log("[UI] onRemoteStream", s);
-        console.log("[UI] remote audio tracks:", s.getAudioTracks());
-        setRemoteStream(s)
-      },
-      onEnd: handleEndCall,
-    });
-    setCallController(ctrl);
-    setInCall(true);
+    try {
+      const stream = await getMedia(audioOnly);
+      setCallAudioOnly(audioOnly);
+      const ctrl = await startCall(roomId, stream, {
+        audioOnly,
+        onRemoteStream: (s) => {
+          console.log("[UI] onRemoteStream", s);
+          setRemoteStream(s);
+        },
+        onEnd: handleEndCall,
+      });
+      callControllerRef.current = ctrl;
+      setInCall(true);
+    } catch {
+      // getUserMedia or startCall error — UI message already set if applicable
+    }
   }
 
-  async function handleAnswerCall(audioOnly = false) {
+  async function handleAnswerCall() {
     if (!incomingCall || inCall) return;
-    const stream = await getMedia(audioOnly);
-    const ctrl = await answerCall(roomId, incomingCall.callId, stream, {
-      onRemoteStream: (s) => setRemoteStream(s),
-      onEnd: handleEndCall,
-    });
-    setCallController(ctrl);
-    setInCall(true);
+    const audioOnly = incomingCall.audioOnly;
+    try {
+      const stream = await getMedia(audioOnly);
+      setCallAudioOnly(audioOnly);
+      const ctrl = await answerCall(roomId, incomingCall.callId, stream, {
+        onRemoteStream: (s) => setRemoteStream(s),
+        onEnd: handleEndCall,
+      });
+      callControllerRef.current = ctrl;
+      setInCall(true);
+      setIncomingCall(null);
+    } catch {
+      // error handled in getMedia
+    }
+  }
+
+  async function handleRejectCall() {
+    if (incomingCall) {
+      try {
+        await rejectCall(roomId, incomingCall.callId);
+      } catch (e) {
+        console.warn("[UI] reject call error", e);
+      }
+    }
     setIncomingCall(null);
   }
 
   async function handleEndCall() {
-    if (callController) {
-      await callController.stop();
+    if (endingCallRef.current) return;
+    endingCallRef.current = true;
+
+    const controller = callControllerRef.current;
+    callControllerRef.current = null;
+
+    if (controller) {
+      await controller.stop();
     }
     setInCall(false);
     setIncomingCall(null);
@@ -135,7 +167,8 @@ function Chat({ roomId, onBack, onExit }) {
     }
     setLocalStream(null);
     setRemoteStream(null);
-    setCallController(null);
+    setCallAudioOnly(false);
+    endingCallRef.current = false;
   }
 
   function formatDate(date) {
@@ -152,7 +185,7 @@ function Chat({ roomId, onBack, onExit }) {
     return d.toLocaleDateString("ru-RU", {
       day: "numeric",
       month: "long",
-      year: "numeric"
+      year: "numeric",
     });
   }
 
@@ -188,20 +221,40 @@ function Chat({ roomId, onBack, onExit }) {
         </div>
       </div>
 
+      {mediaError && (
+        <div className="media-error">{mediaError}</div>
+      )}
+
       {incomingCall && !inCall && (
         <div className="incoming-call">
-          Входящий звонок
-          <button onClick={() => handleAnswerCall(true)}>Принять (аудио)</button>
-          <button onClick={() => handleAnswerCall(false)}>Принять (видео)</button>
-          <button onClick={handleEndCall}>Отклонить</button>
+          Входящий {incomingCall.audioOnly ? "аудио" : "видео"}-звонок
+          <button onClick={handleAnswerCall}>Принять</button>
+          <button onClick={handleRejectCall}>Отклонить</button>
         </div>
       )}
 
       {inCall && (
         <div className="call-panel">
           <div className="videos">
-            <video ref={localVideoRef} autoPlay muted className="video local" />
-            <video ref={remoteVideoRef} autoPlay className="video remote" />
+            {!callAudioOnly && (
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="video local"
+              />
+            )}
+            {callAudioOnly ? (
+              <audio ref={remoteAudioRef} autoPlay playsInline />
+            ) : (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="video remote"
+              />
+            )}
           </div>
           <button className="hangup-btn" onClick={handleEndCall}>
             Завершить звонок
@@ -217,11 +270,10 @@ function Chat({ roomId, onBack, onExit }) {
           const time = m.createdAt
             ? m.createdAt.toDate().toLocaleTimeString([], {
                 hour: "2-digit",
-                minute: "2-digit"
+                minute: "2-digit",
               })
             : "";
 
-          // === ГРУППИРОВКА ПО ДАТАМ ===
           const currentDate = m.createdAt ?? null;
           const prevDate = index > 0 ? messages[index - 1].createdAt ?? null : null;
 
@@ -234,7 +286,8 @@ function Chat({ roomId, onBack, onExit }) {
             : null;
 
           const showDate =
-            currentDateString && (!prevDateString || currentDateString !== prevDateString);
+            currentDateString &&
+            (!prevDateString || currentDateString !== prevDateString);
 
           return (
             <Fragment key={m.id}>
